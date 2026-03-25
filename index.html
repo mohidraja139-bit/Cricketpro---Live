@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CricketPro - Live Cricket Scores</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #00d4ff;
+            --secondary: #ff6b35;
+            --success: #00c851;
+            --danger: #ff4444;
+            --dark: #0a0a0a;
+            --card-bg: #111111;
+            --card-border: #222222;
+            --text: #ffffff;
+            --text-secondary: #888888;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .api-status-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1001;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 14px;
+            flex-wrap: wrap;
+        }
+        .api-status-banner.checking {
+            background: #1a1a2e;
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+        }
+        .api-status-banner.connected {
+            background: #0f2027;
+            color: var(--success);
+            border-bottom: 2px solid var(--success);
+        }
+        .api-status-banner.error {
+            background: #2d132c;
+            color: var(--danger);
+            border-bottom: 2px solid var(--danger);
+        }
+        .api-status-banner.demo {
+            background: #2c1810;
+            color: var(--secondary);
+            border-bottom: 2px solid var(--secondary);
+        }
+        .retry-btn, .demo-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .retry-btn {
+            background: var(--primary);
+            color: white;
+        }
+        .demo-btn {
+            background: var(--secondary);
+            color: white;
+        }
+        .navbar {
+            margin-top: 50px;
+            background: rgba(17, 17, 17, 0.95);
+            border-bottom: 1px solid var(--card-border);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10 gap: 10px;
+            text-decoration: none;
+            color: var(--text);
+            font-size: 20px;
+            font-weight: 800;
+        }
+        .logo i {
+            color: var(--primary);
+        }
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 20px;
+        }
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 14px;
+            transition: color 0.3s;
+        }
+        .nav-links a.active, .nav-links a:hover {
+            color: var(--primary);
+        }
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text);
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .section-title i {
+            color: var(--primary);
+        }
+        .text-live {
+            color: var(--danger);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .live-indicator {
+            background: var(--danger);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-left: 10px;
+            animation: pulse 2s infinite;
+        }
+        .matches-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        .match-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+            transition: all 0.3s;
+        }
+        .match-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+        }
+        .match-card.live {
+            border-color: rgba(255, 68, 68, 0.3);
+        }
+        .live-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: var(--danger);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            animation: pulse-dot 1.5s infinite;
+        }
+        @keyframes pulse-dot {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        .match-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .match-type {
+            background: rgba(0, 212, 255, 0.1);
+            color: var(--primary);
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-weight: 600;
+        }
+        .match-teams {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        .team {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+        .team-second {
+            flex-direction: row-reverse;
+            text-align: right;
+        }
+        .team-logo {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--card-border);
+            background: white;
+        }
+        .team-info h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        .score {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+        .overs {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .vs-divider {
+            width: 40px;
+            height: 40px;
+            background: var(--card-border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-secondary);
+        }
+        .match-footer {
+            border-top: 1px solid var(--card-border);
+            padding-top: 15px;
+        }
+        .match-status {
+            font-size: 14px;
+            color: var(--text);
+            font-weight: 600;
+        }
+        .loading-spinner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+        .loading-spinner i {
+            font-size: 40px;
+            color: var(--primary);
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .no-data, .error-message {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+        .no-data i, .error-message i {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        .footer {
+            background: #050505;
+            border-top: 1px solid var(--card-border);
+            margin-top: 50px;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .notification-container {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            z-index: 9999;
+        }
+        .notification {
+            background: var(--card-bg);
+            border-left: 4px solid var(--primary);
+            padding: 15px 20px20px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 250px;
+        }
+        .notification.success { border-left-color: var(--success); }
+        .notification.error { border-left-color: var(--danger); }
+        section {
+            margin-bottom: 40px;
+        }
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+            .mobile-menu-btn {
+                display: block;
+            }
+            .matches-grid {
+                grid-template-columns: 1fr;
+            }
+            .match-teams {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .team-second {
+                flex-direction: row;
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="apiStatus" class="api-status-banner checking">
+        <span id="apiStatusText">Connecting...</span>
+        <button onclick="useDemoMode()" class="demo-btn">Use Demo</button>
+    </div>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <i class="fas fa-cricket"></i>
+                <span>CricketPro</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="index.html" class="active">Home</a></li>
+                <li><a href="live.html">Live</a></li>
+                <li><a href="fixtures.html">Fixtures</a></li>
+                <li><a href="results.html">Results</a></li>
+            </ul>
+            <button class="mobile-menu-btn"><i class="fas fa-bars"></i></button>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <section>
+            <h1 class="section-title">
+                <i class="fas fa-fire"></i>
+                Trending Matches
+                <span class="live-indicator">LIVE</span>
+            </h1>
+            <div id="trendingMatches" class="matches-grid">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Loading...</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="section-title">
+                <i class="fas fa-circle text-live"></i>
+                Live Matches
+            </h2>
+            <div id="liveMatches" class="matches-grid">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Loading...</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 CricketPro - Live Cricket Scores</p>
+    </footer>
+
+    <div id="notificationContainer" class="notification-container"></div>
+
+    <script>
+        const CONFIG = {
+            API_KEY: '503f2570-73f0-4119-9305-669a6e43009c',
+            BASE_URL: 'https://api.cricapi.com/v1',
+            USE_MOCK_DATA: false
+        };
+
+        const MOCK_DATA = {
+            liveMatches: [
+                {
+                    id: "1",
+                    name: "India vs Australia - 2nd Test",
+                    matchType: "Test",
+                    status: "Live - Day 2",
+                    teams: ["India", "Australia"],
+                    score: [
+                        { r: 326, w: 6, o: 89.4 },
+                        { r: 195, w: 4, o: 52.0 }
+                    ]
+                },
+                {
+                    id: "2",
+                    name: "England vs New Zealand - 3rd ODI",
+                    matchType: "ODI",
+                    status: "Live - England need 45 runs",
+                    teams: ["England", "New Zealand"],
+                    score: [
+                        { r: 298, w: 8, o: 50.0 },
+                        { r: 254, w: 5, o: 47.0 }
+                    ]
+                }
+            ]
+        };
+
+        function getTeamLogo(team) {
+            const logos = {
+                "India": "https://flagcdn.com/w160/in.png",
+                "Australia": "https://flagcdn.com/w160/au.png",
+                "England": "https://flagcdn.com/w160/gb.png",
+                "New Zealand": "https://flagcdn.com/w160/nz.png",
+                "Pakistan": "https://flagcdn.com/w160/pk.png",
+                "South Africa": "https://flagcdn.com/w160/za.png"
+            };
+            return logos[team] || "https://cdn-icons-png.flaticon.com/512/1099/1099784.png";
+        }
+
+        function createMatchCard(match) {
+            const teams = match.teams || match.name.split(' vs ');
+            const team1 = teams[0];
+            const team2 = teams[1];
+            
+            let score1 = { r: '-', w: '-', o: '-' };
+            let score2 = { r: '-', w: '-', o: '-' };
+            
+            if (match.score && match.score[0]) {
+                score1 = {
+                    r: match.score[0].r ?? '-',
+                    w: match.score[0].w ?? '-',
+                    o: match.score[0].o ?? '-'
+                };
+            }
+            if (match.score && match.score[1]) {
+                score2 = {
+                    r: match.score[1].r ?? '-',
+                    w: match.score[1].w ?? '-',
+                    o: match.score[1].o ?? '-'
+                };
+            }
+
+            const isLive = match.status.toLowerCase().includes('live');
+
+            return `
+                <div class="match-card ${isLive ? 'live' : ''}">
+                    ${isLive ? '<div class="live-badge"><span class="pulse"></span> LIVE</div>' : ''}
+                    <div class="match-header">
+                        <span class="match-type">${match.matchType}</span>
+                        <span>${new Date().toLocaleDateString()}</span>
+                    </div>
+                    <div class="match-teams">
+                        <div class="team">
+                            <img src="${getTeamLogo(team1)}" class="team-logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1099/1099784.png'">
+                            <div class="team-info">
+                                <h3>${team1}</h3>
+                                <span class="score">${score1.r}/${score1.w}</span>
+                                <span class="overs">(${score1.o} ov)</span>
+                            </div>
+                        </div>
+                        <div class="vs-divider">VS</div>
+                        <div class="team team-second">
+                            <img src="${getTeamLogo(team2)}" class="team-logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1099/1099784.png'">
+                            <div class="team-info">
+                                <h3>${team2}</h3>
+                                <span class="score">${score2.r}/${score2.w}</span>
+                                <span class="overs">(${score2.o} ov)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="match-footer">
+                        <p class="match-status">${match.status}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function fetchMatches() {
+            if (CONFIG.USE_MOCK_DATA) {
+                return MOCK_DATA.liveMatches;
+            }
+            
+            try {
+                const response = await fetch(`${CONFIG.BASE_URL}/currentMatches?apikey=${CONFIG.API_KEY}&offset=0`);
+                const data = await response.json();
+                
+                if (data.status === 'failure' || !data.data || data.data.length === 0) {
+                    throw new Error('No data');
+                }
+                
+                document.getElementById('apiStatus').style.display = 'none';
+                return data.data;
+            } catch (e) {
+                console.log('API failed, using demo data');
+                useDemoMode();
+                return MOCK_DATA.liveMatches;
+            }
+        }
+
+        function useDemoMode() {
+            CONFIG.USE_MOCK_DATA = true;
+            document.getElementById('apiStatus').className = 'api-status-banner demo';
+            document.getElementById('apiStatusText').textContent = 'Demo Mode - Sample Data';
+            loadMatches();
+        }
+
+        async function loadMatches() {
+            const matches = await fetchMatches();
+            
+            const html = matches.map(m => createMatchCard(m)).join('');
+            
+            document.getElementById('trendingMatches').innerHTML = html;
+            document.getElementById('liveMatches').innerHTML = html;
+        }
+
+        loadMatches();
+        setInterval(loadMatches, 30000); // Refresh every 30 seconds
+    </script>
+</body>
+</html>
